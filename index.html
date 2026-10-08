@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bulk Certificate Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:#0b1020;color:#eef2ff}
+.app{display:flex;min-height:100vh}.side{width:245px;background:#0e1529;border-right:1px solid #202a44;padding:24px 16px}
+.brand{font-weight:700;font-size:20px;margin:0 10px 28px}.brand span{color:#8b7cff}
+.nav button{width:100%;background:none;border:0;color:#9da8c2;text-align:left;padding:12px 14px;border-radius:10px;margin:3px 0;cursor:pointer;font-size:14px}
+.nav button.active,.nav button:hover{background:#1b2440;color:#fff}.main{flex:1;padding:28px;overflow:auto}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}.top h1{font-size:26px;margin:0}.sub{color:#8e9ab6;font-size:13px;margin-top:5px}
+.card{background:#111a30;border:1px solid #202b47;border-radius:16px;padding:22px;margin-bottom:18px}
+.grid{display:grid;grid-template-columns:1.1fr .9fr;gap:18px}.steps{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}.step{padding:8px 12px;border-radius:20px;background:#18223b;color:#8e9ab6;font-size:12px}.step.on{background:#6d5dfc;color:white}
+label{display:block;color:#aab5cd;font-size:12px;margin-bottom:7px}input[type=text],input[type=number],select{width:100%;background:#0b1224;border:1px solid #2a3758;color:#fff;padding:11px 12px;border-radius:9px;outline:none}
+input[type=file]{width:100%;padding:11px;background:#0b1224;border:1px dashed #39496e;border-radius:9px;color:#9eabc5}
+button.primary{background:#6d5dfc;border:0;color:#fff;padding:11px 16px;border-radius:9px;font-weight:600;cursor:pointer}button.secondary{background:#1b2641;border:1px solid #30405f;color:#e9edff;padding:11px 16px;border-radius:9px;cursor:pointer}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.tablewrap{overflow:auto;max-height:260px;border:1px solid #263453;border-radius:10px}.data{width:100%;border-collapse:collapse;font-size:12px}.data th,.data td{padding:9px 10px;border-bottom:1px solid #202c47;text-align:left;white-space:nowrap}.data th{color:#aeb9d0;background:#151f36;position:sticky;top:0}
+.preview{display:flex;justify-content:center;align-items:center;background:#080d19;border-radius:12px;min-height:440px;padding:18px;overflow:auto}.canvasWrap{position:relative;max-width:100%;max-height:520px}.canvasWrap canvas{display:block;max-width:100%;height:auto;border-radius:4px;box-shadow:0 8px 30px #0008}
+.fieldOverlay{position:absolute;transform:translate(-50%,-50%);color:#111;font-weight:700;pointer-events:none;white-space:nowrap}
+.status{font-size:13px;color:#9eabc5;margin-top:10px}.success{color:#71e0a2}.error{color:#ff8e9a}
+.range{width:100%}.hint{font-size:11px;color:#74819e;margin-top:5px}.empty{color:#74819e;text-align:center;padding:35px}
+@media(max-width:900px){.side{width:190px}.grid{grid-template-columns:1fr}.main{padding:18px}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="side">
+  <div class="brand">Cert<span>Forge</span></div>
+  <div class="nav">
+    <button class="active">Create Batch</button>
+    <button onclick="document.getElementById('dataFile').click()">Recipient Data</button>
+    <button onclick="document.getElementById('templateFile').click()">Template</button>
+    <button onclick="document.getElementById('history').scrollIntoView()">History</button>
+  </div>
+</aside>
+<main class="main">
+  <div class="top">
+    <div><h1>Bulk Certificate Generator</h1><div class="sub">Create personalized certificates from one template and a spreadsheet.</div></div>
+    <button class="secondary" onclick="resetAll()">New Batch</button>
+  </div>
+
+  <div class="steps">
+    <div class="step on">1 Template</div><div class="step">2 Recipients</div><div class="step">3 Position</div><div class="step">4 Generate</div>
+  </div>
+
+  <div class="grid">
+    <section>
+      <div class="card">
+        <h3>Batch details</h3>
+        <label>Batch name</label>
+        <input id="batchName" type="text" value="My Certificate Batch">
+        <div style="height:14px"></div>
+        <label>Certificate template (PNG / JPG)</label>
+        <input id="templateFile" type="file" accept="image/png,image/jpeg">
+        <div class="hint">The uploaded artwork stays unchanged; names are drawn on top.</div>
+        <div style="height:14px"></div>
+        <label>Recipient data (CSV / XLSX)</label>
+        <input id="dataFile" type="file" accept=".csv,.xlsx,.xls">
+        <div class="hint">Recommended columns: Name, Role, Event, Date, Department, CertificateID.</div>
+      </div>
+
+      <div class="card">
+        <h3>Text settings</h3>
+        <div class="row">
+          <div><label>Name column</label><select id="nameCol"><option>No data loaded</option></select></div>
+          <div><label>Preview recipient</label><select id="personSelect"><option>No data loaded</option></select></div>
+        </div>
+        <div style="height:14px"></div>
+        <div class="row">
+          <div><label>Font size</label><input id="fontSize" type="number" value="42" min="8" max="180"></div>
+          <div><label>Font</label><select id="font"><option>Georgia</option><option>Times New Roman</option><option>Arial</option><option>Inter</option><option>Courier New</option></select></div>
+        </div>
+        <div style="height:14px"></div>
+        <div class="row">
+          <div><label>Horizontal position <span id="xv">50%</span></label><input id="x" class="range" type="range" min="0" max="100" value="50"></div>
+          <div><label>Vertical position <span id="yv">50%</span></label><input id="y" class="range" type="range" min="0" max="100" value="50"></div>
+        </div>
+        <div class="actions">
+          <button class="secondary" onclick="centerText()">Center Text</button>
+          <button class="secondary" onclick="fitText()">Fit Preview</button>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="card">
+        <h3>Live certificate preview</h3>
+        <div class="preview">
+          <div class="canvasWrap">
+            <canvas id="canvas" width="900" height="636"></canvas>
+            <div id="overlay" class="fieldOverlay" style="left:50%;top:50%">Upload a template</div>
+          </div>
+        </div>
+        <div id="status" class="status">Upload a template and recipient file to begin.</div>
+      </div>
+      <div class="card">
+        <h3>Recipient data</h3>
+        <div id="table" class="tablewrap"><div class="empty">No spreadsheet loaded.</div></div>
+      </div>
+      <div class="card" id="history">
+        <h3>Generate certificates</h3>
+        <div class="sub">Test with a few rows first, then generate your full batch.</div>
+        <div class="actions">
+          <button class="primary" onclick="generateAll()">Generate ZIP</button>
+          <button class="secondary" onclick="generateCurrent()">Download Current PDF</button>
+        </div>
+        <div id="progress" style="margin-top:14px"></div>
+      </div>
+    </section>
+  </div>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+let rows=[], headers=[], img=null;
+
+$('templateFile').addEventListener('change', e=>{
+  const f=e.target.files[0]; if(!f)return;
+  const r=new FileReader(); r.onload=ev=>{img=new Image();img.onload=()=>{ $('canvas').width=img.naturalWidth; $('canvas').height=img.naturalHeight; draw(); setStatus('Template loaded.','success')};img.src=ev.target.result};r.readAsDataURL(f);
+});
+$('dataFile').addEventListener('change', async e=>{
+  const f=e.target.files[0]; if(!f)return;
+  try{
+    const buf=await f.arrayBuffer(), wb=XLSX.read(buf,{type:'array'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+    headers=rows.length?Object.keys(rows[0]):[];
+    $('nameCol').innerHTML=headers.map(h=>`<option>${esc(h)}</option>`).join('');
+    const preferred=headers.find(h=>h.toLowerCase().includes('name'));
+    if(preferred)$('nameCol').value=preferred;
+    $('personSelect').innerHTML=rows.map((r,i)=>`<option value="${i}">${esc(String(r[$('nameCol').value]||'Recipient '+(i+1)))}</option>`).join('');
+    renderTable(); draw(); setStatus(`${rows.length} recipients loaded.`,'success');
+  }catch(err){setStatus('Could not read spreadsheet: '+err.message,'error')}
+});
+$('nameCol').addEventListener('change',refreshPeople);
+$('personSelect').addEventListener('change',draw);
+['fontSize','font','x','y'].forEach(id=>$(id).addEventListener('input',()=>{updateLabels();draw()}));
+
+function refreshPeople(){
+ $('personSelect').innerHTML=rows.map((r,i)=>`<option value="${i}">${esc(String(r[$('nameCol').value]||'Recipient '+(i+1)))}</option>`).join('');
+ draw();
+}
+function updateLabels(){$('xv').textContent=$('x').value+'%';$('yv').textContent=$('y').value+'%'}
+function centerText(){$('x').value=50;$('y').value=50;updateLabels();draw()}
+function fitText(){if(!img)return; $('fontSize').value=Math.max(18,Math.round(img.naturalWidth/22));draw()}
+function esc(s){return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function setStatus(t,c=''){ $('status').className='status '+c; $('status').textContent=t}
+function draw(){
+ const c=$('canvas'),ctx=c.getContext('2d');
+ ctx.clearRect(0,0,c.width,c.height);
+ if(img)ctx.drawImage(img,0,0,c.width,c.height); else {ctx.fillStyle='#e8ebf2';ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle='#64708a';ctx.font='24px Arial';ctx.textAlign='center';ctx.fillText('Upload certificate template',c.width/2,c.height/2)}
+ const idx=+$('personSelect').value||0, name=rows[idx]?String(rows[idx][$('nameCol').value]||''): 'Recipient Name';
+ const fs=+$('fontSize').value||42;
+ ctx.fillStyle='#111';ctx.font=`700 ${fs}px "${$('font').value}"`;ctx.textAlign='center';ctx.textBaseline='middle';
+ ctx.fillText(name,c.width*(+$('x').value/100),c.height*(+$('y').value/100));
+ $('overlay').style.display='none';
+}
+function renderTable(){
+ if(!rows.length){$('table').innerHTML='<div class="empty">No rows found.</div>';return}
+ $('table').innerHTML='<table class="data"><thead><tr>'+headers.map(h=>`<th>${esc(h)}</th>`).join('')+'</tr></thead><tbody>'+
+ rows.slice(0,100).map(r=>'<tr>'+headers.map(h=>`<td>${esc(String(r[h]??''))}</td>`).join('')+'</tr>').join('')+'</tbody></table>';
+ if(rows.length>100)$('table').insertAdjacentHTML('afterend','<div class="hint">Showing first 100 rows in preview; generation includes all rows.</div>');
+}
+function canvasBlob(){
+ return new Promise(res=>$('canvas').toBlob(res,'image/png'));
+}
+async function generateCurrent(){
+ if(!img||!rows.length){setStatus('Upload both template and recipient data first.','error');return}
+ const blob=await canvasBlob(), url=URL.createObjectURL(blob), {jsPDF}=window.jspdf;
+ const pdf=new jsPDF({orientation:img.naturalWidth>=img.naturalHeight?'landscape':'portrait',unit:'px',format:[img.naturalWidth,img.naturalHeight]});
+ pdf.addImage(url,'PNG',0,0,img.naturalWidth,img.naturalHeight);
+ const name=safeName(String(rows[+$('personSelect').value||0][$('nameCol').value]||'certificate'));
+ pdf.save(name+'.pdf'); URL.revokeObjectURL(url);
+}
+async function makePdfForRow(row){
+ const c=document.createElement('canvas');c.width=img.naturalWidth;c.height=img.naturalHeight;const ctx=c.getContext('2d');
+ ctx.drawImage(img,0,0,c.width,c.height);const fs=+$('fontSize').value||42;
+ ctx.fillStyle='#111';ctx.font=`700 ${fs}px "${$('font').value}"`;ctx.textAlign='center';ctx.textBaseline='middle';
+ ctx.fillText(String(row[$('nameCol').value]||'Recipient'),c.width*(+$('x').value/100),c.height*(+$('y').value/100));
+ const {jsPDF}=window.jspdf,pdf=new jsPDF({orientation:c.width>=c.height?'landscape':'portrait',unit:'px',format:[c.width,c.height]});
+ pdf.addImage(c.toDataURL('image/png'),'PNG',0,0,c.width,c.height);
+ return pdf.output('blob');
+}
+function safeName(s){return s.replace(/[<>:"/\\\\|?*\\x00-\\x1F]/g,'_').trim().slice(0,100)||'certificate'}
+async function generateAll(){
+ if(!img||!rows.length){setStatus('Upload both template and recipient data first.','error');return}
+ const zip=new JSZip(), prog=$('progress'); prog.innerHTML='<div class="status">Generating 0 / '+rows.length+'</div>';
+ for(let i=0;i<rows.length;i++){
+   const blob=await makePdfForRow(rows[i]);
+   const id=String(i+1).padStart(3,'0'), name=safeName(String(rows[i][$('nameCol').value]||'Recipient'));
+   zip.file(`${id}_${name}.pdf`,blob);
+   prog.innerHTML=`<div class="status">Generating ${i+1} / ${rows.length}</div><div style="height:7px;background:#1c2742;border-radius:5px;margin-top:7px"><div style="width:${((i+1)/rows.length)*100}%;height:100%;background:#6d5dfc;border-radius:5px"></div></div>`;
+   if(i%5===0)await new Promise(r=>setTimeout(r,0));
+ }
+ const out=await zip.generateAsync({type:'blob'});
+ const a=document.createElement('a');a.href=URL.createObjectURL(out);a.download=safeName($('batchName').value)+'.zip';a.click();
+ prog.innerHTML=`<div class="status success">✓ ${rows.length} certificates generated. ZIP downloaded.</div>`;
+}
+function resetAll(){location.reload()}
+updateLabels();draw();
+</script>
+</body>
+</html>
